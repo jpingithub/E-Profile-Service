@@ -2,6 +2,7 @@ package com.user_profile.user_profile.controller;
 
 import java.util.List;
 
+import com.user_profile.user_profile.dto.LoggedInResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,13 +44,19 @@ public class UserController {
 	ResponseEntity<List<User>> allUsers() {
 		return ResponseEntity.ok(service.allUsers());
 	}
+
+	@GetMapping("/{id}")
+	public ResponseEntity<User> userDetails(@PathVariable("id") Integer id){
+		return ResponseEntity.ok(service.getUserDetailsById(id));
+	}
+
 	@PutMapping("/{id}")
 	ResponseEntity<User> update(@PathVariable("id") Integer id ,@RequestBody UserDTO dto) {
 		return ResponseEntity.ok(service.update(id, dto));
 	}
 	
 	@PostMapping("/login")
-	ResponseEntity<User> login(@RequestBody LoginRequest request) {
+	ResponseEntity<LoggedInResponse> login(@RequestBody LoginRequest request) {
 		return ResponseEntity.ok(service.login(request.getEmail(), request.getPassword()));
 	}
 	
@@ -57,6 +64,8 @@ public class UserController {
 	ResponseEntity<User> updatePassword(@RequestBody UpdatePasswordRequest request) {
 		return ResponseEntity.ok(service.updatePassword(request));
 	}
+
+
 	
 }
 

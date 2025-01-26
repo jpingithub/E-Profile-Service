@@ -3,7 +3,12 @@ package com.user_profile.user_profile.service;
 import java.util.List;
 import java.util.Optional;
 
+import com.user_profile.user_profile.dto.LoggedInResponse;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.user_profile.user_profile.dto.UpdatePasswordRequest;
@@ -21,11 +26,15 @@ public class UserService {
 	
 	private final UserRepository repo;
 	private final ModelMapper modelMapper;
+	private final PasswordEncoder passwordEncoder;
+	private final AuthenticationManager authenticationManager;
+	private final TokenService tokenService;
 
 	public User addUser(UserDTO dto) {
 		User user = modelMapper.map(dto, User.class);
 		Optional<User> optionalUser = repo.findByEmailAndIsDeletedFalse(dto.getEmail());
 		if (optionalUser.isEmpty()) {
+			user.setPassword(passwordEncoder.encode(user.getPassword()));
 			return repo.save(user);
 		} else
 			throw new UserAlreadyExistsException("User already exist with email : " + dto.getEmail());
@@ -43,7 +52,7 @@ public class UserService {
 	
 	public List<User> allUsers() {
 		Optional<List<User>> optionalUsers = repo.findByIsDeletedFalse();
-		if(optionalUsers.get().isEmpty()){
+		if(optionalUsers.isEmpty()){
 			throw new UserNotFoundException("No user found ............. ");
 		}else {
 			return optionalUsers.get();
@@ -59,11 +68,17 @@ public class UserService {
 		}else throw new UserNotFoundException("No user found with id " + id); 
 	}
 	
-	public User login(String email,String password) {
-		Optional<User> optionalUser = repo.findByEmailAndPasswordAndIsDeletedFalse(email, password);
-		if(optionalUser.isPresent()) {
-			return optionalUser.get();
-		}else throw new UserNotFoundException("Login failed, No user found : "+email);
+	public LoggedInResponse login(String email, String password) {
+		final Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+		LoggedInResponse loggedInResponse = new LoggedInResponse();
+		loggedInResponse.setToken(tokenService.generateToken(authentication));
+		User user = repo.findByEmailAndIsDeletedFalse(email).orElseThrow();
+		loggedInResponse.setUserId(user.getId());
+		return loggedInResponse;
+//		Optional<User> optionalUser = repo.findByEmailAndPasswordAndIsDeletedFalse(email, password);
+//		if(optionalUser.isPresent()) {
+//			return optionalUser.get();
+//		}else throw new UserNotFoundException("Login failed, No user found : "+email);
 	}
 	
 	public User updatePassword(UpdatePasswordRequest request) {
@@ -73,6 +88,10 @@ public class UserService {
 			user.setPassword(request.getPassword());
 			return repo.save(user);
 		}else throw new UserNotFoundException("No user found with the ID : "+request.getId());
+	}
+
+	public User getUserDetailsById(Integer id) {
+		return repo.findById(id).orElseThrow();
 	}
 }
 
